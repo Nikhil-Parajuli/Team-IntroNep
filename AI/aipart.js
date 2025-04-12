@@ -1,17 +1,10 @@
 
     let userProfile = {};
-    const apiKey = 'AIzaSyDzcWEbJFrR1pDGPgOyAPZ45lTIPD60R80'; // Gemini API 
-
-    // ssection switching
-    function switchSection(sectionId) {
-      document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-      });
-      document.getElementById(sectionId).classList.add('active');
-    }
-
-    // onboard handler
-    function proceedToChat() {
+    const apiKey = 'AIzaSyDzcWEbJFrR1pDGPgOyAPZ45lTIPD60R80';
+    let selectedVoiceIndex = null; // New variable for voice selection
+    
+    //  onboarding handler
+    function proceedToVoiceSelection() {
       userProfile = {
         topic: document.getElementById('q1').value,
         feeling: document.getElementById('q2').value,
@@ -24,40 +17,58 @@
         return;
       }
 
-      switchSection('chat-interface');
-      
-      const initialMessage = `Hello, I see you're feeling ${userProfile.feeling} and want to discuss ${userProfile.topic}. How can I help you today?`;
-      addMessage('ai', initialMessage);
+      switchSection('voice-selection');
+      loadVoices(); // Initialize voice loading
     }
-
-    // AI integration
-    async function getAIResponse(userText) {
-      const systemPrompt = `You are a gentle, professional virtual psychologist. The user is feeling ${userProfile.feeling}, wants to discuss ${userProfile.topic}, seeks ${userProfile.goal}, and rates their mood as ${userProfile.mood}/5. Respond with empathy and simple, clear guidance.`;
-      
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `${systemPrompt}\nUser: ${userText}`
-              }]
-            }]
-          })
+    
+    // New voice loading functionality
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        document.getElementById('voice-loading').style.display = 'none';
+        document.getElementById('voice-prompt').style.display = 'block';
+        document.getElementById('voice-options').style.display = 'flex';
+        
+        // Set up voice selection
+        document.querySelectorAll('.voice-option').forEach(option => {
+          option.addEventListener('click', () => {
+            document.querySelectorAll('.voice-option').forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+            selectedVoiceIndex = parseInt(option.dataset.voice);
+            
+            // Preview the voice
+            const utterance = new SpeechSynthesisUtterance("Hello, this is a voice preview");
+            utterance.voice = voices[selectedVoiceIndex % voices.length]; // Simple fallback
+            window.speechSynthesis.speak(utterance);
+          });
         });
-
-        const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
-      } catch (error) {
-        console.error('API Error:', error);
-        return "I'm having trouble connecting. Could you try again?";
+      } else {
+        setTimeout(loadVoices, 100); // Retry if voices aren't loaded yet
       }
     }
-
-    //  chat functions
+    
+    // Initialize voice loading
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    // New function to start chat session
+    function startChatSession() {
+      if (selectedVoiceIndex === null) {
+        alert('Please select a voice to continue.');
+        return;
+      }
+      
+      switchSection('chat-interface');
+      const initialMessage = `Hello, I see you're feeling ${userProfile.feeling} and want to discuss ${userProfile.topic}. How can I help you today?`;
+      addMessage('ai', initialMessage);
+      
+      // Speak the initial message
+      const utterance = new SpeechSynthesisUtterance(initialMessage);
+      const voices = window.speechSynthesis.getVoices();
+      utterance.voice = voices[selectedVoiceIndex % voices.length];
+      window.speechSynthesis.speak(utterance);
+    }
+    
+    // Modified sendMessage to include TTS
     async function sendMessage() {
       const input = document.getElementById('user-input');
       const userText = input.value.trim();
@@ -71,32 +82,21 @@
       typingIndicator.className = 'message ai-message typing-indicator';
       typingIndicator.innerHTML = '<span></span><span></span><span></span>';
       document.getElementById('chat-container').appendChild(typingIndicator);
-      document.getElementById('chat-container').scrollTop = document.getElementById('chat-container').scrollHeight;
       
       try {
         const aiResponse = await getAIResponse(userText);
-        // Remove typing indicator
         document.getElementById('chat-container').removeChild(typingIndicator);
         addMessage('ai', aiResponse);
+        
+        // Speak the AI response
+        const utterance = new SpeechSynthesisUtterance(aiResponse);
+        const voices = window.speechSynthesis.getVoices();
+        utterance.voice = voices[selectedVoiceIndex % voices.length];
+        window.speechSynthesis.speak(utterance);
       } catch (error) {
         document.getElementById('chat-container').removeChild(typingIndicator);
         addMessage('ai', "I'm sorry, I encountered an error. Could you rephrase that?");
       }
     }
     
-    function addMessage(sender, text) {
-      const chatContainer = document.getElementById('chat-container');
-      const message = document.createElement('div');
-      message.classList.add('message', sender === 'user' ? 'user-message' : 'ai-message');
-      message.textContent = text;
-      chatContainer.appendChild(message);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
     
-    document.getElementById('user-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-  

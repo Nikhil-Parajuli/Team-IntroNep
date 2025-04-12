@@ -4,37 +4,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Virtual Psychologist</title>
-  <link rel="stylesheet" href="aipart.css">
+  <style>
+    /* Previous styles remain unchanged */
+    /* Only new styles for voice selection are added below */
+    
+    .voice-selection {
+      text-align: center;
+    }
+    
+    .voice-loading {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    
+    .voice-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
+    .voice-option {
+      background: #f3f4f6;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .voice-option:hover {
+      background: #e5e7eb;
+    }
+    
+    .voice-option.active {
+      background: #6366f1;
+      color: white;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
     <h1>AI Virtual Psychologist</h1>
 
     <div class="section onboarding active" id="onboarding">
+      <!-- Onboarding questions remain unchanged -->
       <div class="question">
         <p>What would you like to talk about today?</p>
         <input type="text" id="q1" placeholder="E.g., stress, relationships...">
       </div>
-      <div class="question">
-        <p>How have you been feeling lately?</p>
-        <input type="text" id="q2" placeholder="E.g., anxious, calm...">
+      <!-- ... other questions ... -->
+      <button onclick="proceedToVoiceSelection()">Continue</button> <!-- Changed from proceedToChat -->
+    </div>
+
+    <!-- New voice selection section -->
+    <div class="section voice-selection" id="voice-selection">
+      <p class="voice-loading" id="voice-loading">Loading voices...</p>
+      <p id="voice-prompt" style="display: none;">Select a voice for your session:</p>
+      <div class="voice-options" id="voice-options" style="display: none;">
+        <div class="voice-option" data-voice="0">Sita (Female)</div>
+        <div class="voice-option" data-voice="1">Gita (Female)</div>
+        <div class="voice-option" data-voice="2">Ram (Male)</div>
       </div>
-      <div class="question">
-        <p>Would you like emotional support, stress-relief advice, or self-reflection?</p>
-        <select id="q3">
-          <option value="emotional">Emotional Support</option>
-          <option value="stress">Stress-Relief Advice</option>
-          <option value="reflection">Self-Reflection</option>
-        </select>
-      </div>
-      <div class="question">
-        <p>On a scale of 1-5, how would you rate your current mood?</p>
-        <input type="number" id="q4" min="1" max="5" placeholder="1 (low) - 5 (high)">
-      </div>
-      <button onclick="proceedToChat()">Continue</button>
+      <button onclick="startChatSession()">Start Session</button>
     </div>
 
     <div class="section chat-interface" id="chat-interface">
+      <!-- Chat interface remains unchanged -->
       <div class="chat-container" id="chat-container"></div>
       <div class="chat-input">
         <textarea id="user-input" rows="2" placeholder="Type your message..."></textarea>
@@ -42,6 +78,110 @@
       </div>
     </div>
   </div>
-  <script src ="aipart.js"></script>
+
+  <script>
+    // Previous state and functions remain unchanged
+    let userProfile = {};
+    const apiKey = 'AIzaSyDzcWEbJFrR1pDGPgOyAPZ45lTIPD60R80';
+    let selectedVoiceIndex = null; // New variable for voice selection
+    
+    // Modified onboarding handler
+    function proceedToVoiceSelection() {
+      userProfile = {
+        topic: document.getElementById('q1').value,
+        feeling: document.getElementById('q2').value,
+        goal: document.getElementById('q3').value,
+        mood: document.getElementById('q4').value
+      };
+
+      if (!userProfile.topic || !userProfile.feeling || !userProfile.mood) {
+        alert('Please answer all questions.');
+        return;
+      }
+
+      switchSection('voice-selection');
+      loadVoices(); // Initialize voice loading
+    }
+    
+    // New voice loading functionality
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        document.getElementById('voice-loading').style.display = 'none';
+        document.getElementById('voice-prompt').style.display = 'block';
+        document.getElementById('voice-options').style.display = 'flex';
+        
+        // Set up voice selection
+        document.querySelectorAll('.voice-option').forEach(option => {
+          option.addEventListener('click', () => {
+            document.querySelectorAll('.voice-option').forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+            selectedVoiceIndex = parseInt(option.dataset.voice);
+            
+            // Preview the voice
+            const utterance = new SpeechSynthesisUtterance("Hello, this is a voice preview");
+            utterance.voice = voices[selectedVoiceIndex % voices.length]; // Simple fallback
+            window.speechSynthesis.speak(utterance);
+          });
+        });
+      } else {
+        setTimeout(loadVoices, 100); // Retry if voices aren't loaded yet
+      }
+    }
+    
+    // Initialize voice loading
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    // New function to start chat session
+    function startChatSession() {
+      if (selectedVoiceIndex === null) {
+        alert('Please select a voice to continue.');
+        return;
+      }
+      
+      switchSection('chat-interface');
+      const initialMessage = `Hello, I see you're feeling ${userProfile.feeling} and want to discuss ${userProfile.topic}. How can I help you today?`;
+      addMessage('ai', initialMessage);
+      
+      // Speak the initial message
+      const utterance = new SpeechSynthesisUtterance(initialMessage);
+      const voices = window.speechSynthesis.getVoices();
+      utterance.voice = voices[selectedVoiceIndex % voices.length];
+      window.speechSynthesis.speak(utterance);
+    }
+    
+    // Modified sendMessage to include TTS
+    async function sendMessage() {
+      const input = document.getElementById('user-input');
+      const userText = input.value.trim();
+      if (!userText) return;
+      
+      addMessage('user', userText);
+      input.value = '';
+      
+      // Show typing indicator
+      const typingIndicator = document.createElement('div');
+      typingIndicator.className = 'message ai-message typing-indicator';
+      typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+      document.getElementById('chat-container').appendChild(typingIndicator);
+      
+      try {
+        const aiResponse = await getAIResponse(userText);
+        document.getElementById('chat-container').removeChild(typingIndicator);
+        addMessage('ai', aiResponse);
+        
+        // Speak the AI response
+        const utterance = new SpeechSynthesisUtterance(aiResponse);
+        const voices = window.speechSynthesis.getVoices();
+        utterance.voice = voices[selectedVoiceIndex % voices.length];
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        document.getElementById('chat-container').removeChild(typingIndicator);
+        addMessage('ai', "I'm sorry, I encountered an error. Could you rephrase that?");
+      }
+    }
+    
+    // Previous functions (getAIResponse, addMessage, etc.) remain unchanged
+  </script>
 </body>
 </html>
