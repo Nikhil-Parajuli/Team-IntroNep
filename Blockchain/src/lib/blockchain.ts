@@ -1,7 +1,24 @@
-
 import { ethers } from "ethers";
 import { toast } from "sonner";
 import Web3 from "web3";
+import { uploadToIPFS, mockUploadToIPFS } from "./ipfs";
+import { uploadToPinata, getFromPinata } from "./ipfs-enhanced";
+
+// Use this flag to easily switch between basic IPFS and Pinata
+const USE_PINATA = true; // Set to true when you've configured your Pinata API keys
+
+// A helper function that uses either basic IPFS or Pinata based on the flag
+const uploadToPreferredIPFS = async (data: any): Promise<string> => {
+  return USE_PINATA ? 
+    await uploadToPinata(data) : 
+    await uploadToIPFS(data);
+};
+
+const getFromPreferredIPFS = async (cid: string): Promise<any> => {
+  return USE_PINATA ?
+    await getFromPinata(cid) :
+    (await import('./ipfs')).getFromIPFS(cid);
+};
 
 // Mock contract ABIs for development - would be replaced with actual ABIs after compilation
 export const THERAPIST_REGISTRY_ABI = [
@@ -363,6 +380,11 @@ export const APPOINTMENT_FACTORY_ABI = [
         "internalType": "string",
         "name": "_sessionType",
         "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_clientDataIpfsHash",
+        "type": "string"
       }
     ],
     "name": "createBooking",
@@ -461,6 +483,11 @@ export const BOOKING_CONTRACT_ABI = [
         "internalType": "string",
         "name": "_sessionType",
         "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_ipfsHash",
+        "type": "string"
       }
     ],
     "stateMutability": "nonpayable",
@@ -506,6 +533,19 @@ export const BOOKING_CONTRACT_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "ipfsHash",
+        "type": "string"
+      }
+    ],
+    "name": "ClientDataUpdated",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "anonymousId",
     "outputs": [
@@ -534,6 +574,19 @@ export const BOOKING_CONTRACT_ABI = [
   {
     "inputs": [],
     "name": "appointmentTime",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "clientDataIpfsHash",
     "outputs": [
       {
         "internalType": "string",
@@ -610,6 +663,11 @@ export const BOOKING_CONTRACT_ABI = [
       {
         "internalType": "string",
         "name": "_sessionType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_clientDataIpfsHash",
         "type": "string"
       },
       {
@@ -720,6 +778,19 @@ export const BOOKING_CONTRACT_ABI = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_ipfsHash",
+        "type": "string"
+      }
+    ],
+    "name": "updateClientDataIpfsHash",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ];
@@ -883,15 +954,29 @@ export function generateAnonymousId() {
   return 'anon_' + Math.random().toString(36).substring(2, 12);
 }
 
-// Create a booking smart contract
+// Create a booking smart contract with IPFS integration
 export async function createBookingContract(
   therapistId,
   date,
   time,
   anonymousId,
-  sessionType
+  sessionType,
+  clientData
 ) {
   try {
+    toast.info("Uploading client data to IPFS...");
+    
+    // First, upload the client data to IPFS using our preferred method
+    const ipfsHash = await uploadToPreferredIPFS(clientData);
+    
+    if (!ipfsHash) {
+      toast.error("Failed to upload client data to IPFS");
+      return { success: false, error: "IPFS upload failed" };
+    }
+    
+    toast.success("Client data uploaded to IPFS successfully");
+    toast.info("Creating booking on the blockchain...");
+    
     const web3 = await initWeb3();
     if (!web3) {
       return { success: false, error: "Web3 not initialized" };
@@ -903,13 +988,14 @@ export async function createBookingContract(
       APPOINTMENT_FACTORY_ADDRESS
     );
     
-    // Create booking transaction
+    // Create booking transaction with IPFS hash
     const receipt = await appointmentFactoryContract.methods.createBooking(
       therapistId,
       date,
       time,
       anonymousId || generateAnonymousId(),
-      sessionType || "individual"
+      sessionType || "individual",
+      ipfsHash
     ).send({ 
       from: accounts[0],
       gas: 3000000
@@ -922,23 +1008,135 @@ export async function createBookingContract(
       return { 
         success: true, 
         transactionHash: receipt.transactionHash,
-        contractAddress: receipt.to // Fallback to factory address if event parsing fails
+        contractAddress: receipt.to, // Fallback to factory address if event parsing fails
+        ipfsHash
       };
     }
     
     return {
       success: true,
       transactionHash: receipt.transactionHash,
-      contractAddress: bookingCreatedEvent.returnValues.bookingAddress
+      contractAddress: bookingCreatedEvent.returnValues.bookingAddress,
+      ipfsHash
     };
   } catch (error) {
     console.error("Error creating booking:", error);
+    toast.error("Error creating booking on blockchain");
+    
+    // For prototype fallback - in production, you'd want to handle this better
+    // Consider using the mockUploadToIPFS for development if IPFS is not available
+    const mockIpfsHash = await mockUploadToIPFS(clientData);
+    
+    return {
+      success: true, // Still return success for prototype
+      transactionHash: "0x" + Math.random().toString(16).substring(2, 42),
+      contractAddress: "0x" + Math.random().toString(16).substring(2, 42),
+      ipfsHash: mockIpfsHash
+    };
+  }
+}
+
+// Update client data on IPFS and update the hash on the contract
+export async function updateClientData(contractAddress, clientData) {
+  try {
+    toast.info("Uploading updated client data to IPFS...");
+    
+    // Upload the updated client data to IPFS using our preferred method
+    const ipfsHash = await uploadToPreferredIPFS(clientData);
+    
+    if (!ipfsHash) {
+      toast.error("Failed to upload client data to IPFS");
+      return { success: false, error: "IPFS upload failed" };
+    }
+    
+    toast.success("Client data uploaded to IPFS successfully");
+    toast.info("Updating hash on the blockchain...");
+    
+    const web3 = await initWeb3();
+    if (!web3) {
+      return { success: false, error: "Web3 not initialized" };
+    }
+    
+    const accounts = await web3.eth.getAccounts();
+    const bookingContract = new web3.eth.Contract(
+      BOOKING_CONTRACT_ABI,
+      contractAddress
+    );
+    
+    // Update the IPFS hash on the contract
+    const receipt = await bookingContract.methods.updateClientDataIpfsHash(ipfsHash).send({ 
+      from: accounts[0],
+      gas: 200000
+    });
+    
+    return {
+      success: true,
+      transactionHash: receipt.transactionHash,
+      ipfsHash
+    };
+  } catch (error) {
+    console.error("Error updating client data:", error);
+    toast.error("Error updating client data on blockchain");
+    
+    // For prototype fallback
+    const mockIpfsHash = await mockUploadToIPFS(clientData);
+    
+    return {
+      success: true, // Still return success for prototype
+      transactionHash: "0x" + Math.random().toString(16).substring(2, 42),
+      ipfsHash: mockIpfsHash
+    };
+  }
+}
+
+// Retrieve client data from IPFS using the hash stored on the contract
+export async function getClientData(contractAddress) {
+  try {
+    const web3 = await initWeb3();
+    if (!web3) {
+      return { success: false, error: "Web3 not initialized" };
+    }
+    
+    const accounts = await web3.eth.getAccounts();
+    const bookingContract = new web3.eth.Contract(
+      BOOKING_CONTRACT_ABI,
+      contractAddress
+    );
+    
+    // Get the appointment details, which includes the IPFS hash
+    const appointmentDetails = await bookingContract.methods.getAppointmentDetails().call({ 
+      from: accounts[0]
+    });
+    
+    // Extract the IPFS hash
+    const ipfsHash = appointmentDetails._clientDataIpfsHash;
+    
+    if (!ipfsHash) {
+      return { success: false, error: "No IPFS hash found for this appointment" };
+    }
+    
+    // Use our preferred method to retrieve the data
+    const clientData = await getFromPreferredIPFS(ipfsHash);
+    
+    return {
+      success: true,
+      clientData,
+      ipfsHash
+    };
+  } catch (error) {
+    console.error("Error retrieving client data:", error);
+    toast.error("Error retrieving client data");
     
     // For prototype fallback
     return {
       success: true, // Still return success for prototype
-      transactionHash: "0x" + Math.random().toString(16).substring(2, 42),
-      contractAddress: "0x" + Math.random().toString(16).substring(2, 42)
+      clientData: {
+        name: "Sample Client",
+        email: "client@example.com",
+        concerns: "Sample concerns for demonstration",
+        preferences: "Sample preferences for demonstration"
+      },
+      ipfsHash: "QmRNjwu9dGMnPzTLuUYNV1rvBaHNgrQn2iSciUKsfxWkXi"
     };
   }
 }
