@@ -30,6 +30,33 @@
       color: #333;
     }
 
+    /* New onboarding styles */
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .question {
+      margin-bottom: 15px;
+    }
+
+    .question p {
+      margin-bottom: 8px;
+      color: #444;
+    }
+
+    .question input, .question select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    /* Existing chat styles */
     .chat-container {
       height: 300px;
       border: 1px solid #ddd;
@@ -81,4 +108,3 @@
       border-radius: 6px;
       cursor: pointer;
     }
-  
