@@ -2,13 +2,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import UserDashboard from "./pages/UserDashboard";
 import TherapistDashboard from "./pages/TherapistDashboard";
+import AIChatbotPage from "./pages/AIChatbotPage";
+// Import AIChatbotIntegration from the correct path
+import AIChatbotIntegration from "./AIChatbotIntegration";
 
 const queryClient = new QueryClient();
 
@@ -51,7 +54,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -60,6 +63,25 @@ const App = () => {
               element={
                 <ProtectedRoute requiredType="user">
                   <UserDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/ai-chatbot" 
+              element={
+                <ProtectedRoute requiredType="user">
+                  <AIChatbotPage />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Add a dedicated route for the AIChatbotIntegration component */}
+            <Route 
+              path="/ai-therapy" 
+              element={
+                <ProtectedRoute requiredType="user">
+                  <div className="container mx-auto p-6">
+                    <AIChatbotIntegration />
+                  </div>
                 </ProtectedRoute>
               } 
             />
@@ -74,7 +96,7 @@ const App = () => {
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );

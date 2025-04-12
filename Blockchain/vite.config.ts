@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 8082,
   },
   plugins: [
     react(),
@@ -18,5 +18,23 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Add Node.js polyfills
+  define: {
+    global: {},
+  },
+  // Provide polyfills for Node.js built-in modules
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // Ensure base path is set correctly for deployment
+    base: '/',
   },
 }));
