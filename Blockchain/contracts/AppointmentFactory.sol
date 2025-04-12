@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -23,7 +22,8 @@ contract AppointmentFactory {
         string memory _date,
         string memory _time,
         string memory _anonymousId,
-        string memory _sessionType
+        string memory _sessionType,
+        string memory _clientDataIpfsHash
     ) public returns (address) {
         require(therapistRegistry.isTherapistVerified(_therapistAddress), "Therapist is not verified");
         
@@ -33,7 +33,8 @@ contract AppointmentFactory {
             _date,
             _time,
             _anonymousId,
-            _sessionType
+            _sessionType,
+            _clientDataIpfsHash
         );
         
         address bookingAddress = address(newBooking);

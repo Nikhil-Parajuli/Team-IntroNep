@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
@@ -13,10 +12,13 @@ contract BookingContract {
     bool public isConfirmedByTherapist;
     bool public isCancelled;
     uint public createdAt;
+    // Added new field for IPFS hash
+    string public clientDataIpfsHash;
     
     event AppointmentConfirmedByPatient(address indexed patient);
     event AppointmentConfirmedByTherapist(address indexed therapist);
     event AppointmentCancelled(address indexed canceller);
+    event ClientDataUpdated(string ipfsHash);
     
     modifier onlyParticipant() {
         require(msg.sender == patient || msg.sender == therapist, "Only booking participants can perform this action");
@@ -44,7 +46,8 @@ contract BookingContract {
         string memory _appointmentDate,
         string memory _appointmentTime,
         string memory _anonymousId,
-        string memory _sessionType
+        string memory _sessionType,
+        string memory _ipfsHash
     ) {
         patient = _patient;
         therapist = _therapist;
@@ -52,6 +55,7 @@ contract BookingContract {
         appointmentTime = _appointmentTime;
         anonymousId = _anonymousId;
         sessionType = _sessionType;
+        clientDataIpfsHash = _ipfsHash;
         createdAt = block.timestamp;
     }
     
@@ -71,6 +75,12 @@ contract BookingContract {
         emit AppointmentCancelled(msg.sender);
     }
     
+    // Added new function to update client data when needed
+    function updateClientDataIpfsHash(string memory _ipfsHash) public onlyParticipant notCancelled {
+        clientDataIpfsHash = _ipfsHash;
+        emit ClientDataUpdated(_ipfsHash);
+    }
+    
     function getAppointmentDetails() public view returns (
         address _patient,
         address _therapist,
@@ -78,6 +88,7 @@ contract BookingContract {
         string memory _appointmentTime,
         string memory _anonymousId,
         string memory _sessionType,
+        string memory _clientDataIpfsHash,
         bool _isConfirmedByPatient,
         bool _isConfirmedByTherapist,
         bool _isCancelled
@@ -89,6 +100,7 @@ contract BookingContract {
             appointmentTime,
             anonymousId,
             sessionType,
+            clientDataIpfsHash,
             isConfirmedByPatient,
             isConfirmedByTherapist,
             isCancelled
