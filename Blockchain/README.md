@@ -20,7 +20,7 @@ Our solution combines AI chatbot support for immediate assistance with a secure 
 ## System Architecture
 
 <div align="center">
-  <img src="public/architecture.png" alt="System Architecture" width="700" />
+  <img src="public/architecture.jpeg" alt="System Architecture" width="700" />
 </div>
 
 The platform architecture consists of:
@@ -148,7 +148,7 @@ The platform architecture consists of:
     </tr>
     <tr>
       <td>Nikhil Parajuli</td>
-      <td>Lead Developer & Project Manager</td>
+      <td>Lead Developer & Project Manager,FrontEnd, SmartContract/td>
       <td>System architecture, blockchain integration, and overall coordination</td>
     </tr>
     <tr>
