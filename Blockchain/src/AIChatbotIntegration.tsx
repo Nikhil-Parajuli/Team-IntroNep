@@ -280,58 +280,171 @@ const AIChatbotIntegration: React.FC = () => {
     }
   };
 
-  // Voice Recognition
+  // Voice Recognition with improved network error handling
   const toggleVoiceRecognition = () => {
     if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       alert('Sorry, your browser does not support voice recognition. Please type your message.');
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
     if (!isRecognizing) {
-      setIsRecognizing(true);
+      // Start recognition
+      startVoiceRecognition();
+    } else {
+      // Stop recognition
+      stopVoiceRecognition();
+    }
+  };
 
+  // Track recognition instance globally to prevent garbage collection
+  const recognitionRef = useRef<any>(null);
+  // Track retry attempts
+  const retryCountRef = useRef<number>(0);
+  const MAX_RETRIES = 3;
+  
+  // Start voice recognition with error handling
+  const startVoiceRecognition = () => {
+    try {
+      const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      // Create a new recognition instance
+      if (!recognitionRef.current) {
+        recognitionRef.current = new SpeechRecognition();
+      }
+      
+      const recognition = recognitionRef.current;
+      
+      // Configure recognition
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false; // Set to false for better stability on macOS
+
+      // Set up event handlers
       recognition.onstart = () => {
         console.log('Voice recognition started');
+        setIsRecognizing(true);
       };
 
       recognition.onresult = (event: any) => {
+        // Get the transcript
         const transcript = event.results[0][0].transcript;
         console.log('Voice Input:', transcript);
+        
         setUserInput(transcript);
-        // Use a setTimeout to ensure the userInput is properly set before sending
-        setTimeout(() => sendMessage(), 100);
+        retryCountRef.current = 0; // Reset retry counter on success
+        
+        // Use a timeout to ensure the state is updated before sending
+        setTimeout(() => {
+          sendMessage();
+        }, 100);
       };
 
       recognition.onend = () => {
-        setIsRecognizing(false);
         console.log('Voice recognition ended');
+        setIsRecognizing(false);
       };
 
       recognition.onerror = (event: any) => {
-        setIsRecognizing(false);
-        console.error('Speech Recognition Error:', event.error);
+        console.error('Speech Recognition Error:', event.error, event);
         
-        let errorMessage = 'I couldn\'t hear you clearly. Would you like to try again or type instead?';
-        if (event.error === 'no-speech') {
-          errorMessage = 'I didn\'t hear anything. Could you speak again, please?';
-        } else if (event.error === 'audio-capture') {
-          errorMessage = 'I can\'t find a microphone. Please check if one is connected.';
+        // Handle network errors differently
+        if (event.error === 'network') {
+          retryCountRef.current += 1;
+          
+          if (retryCountRef.current <= MAX_RETRIES) {
+            console.log(`Network error, attempt ${retryCountRef.current}/${MAX_RETRIES}`);
+            
+            // Show user-friendly message in the UI instead of alert
+            const messageElement = document.createElement('div');
+            messageElement.style.position = 'fixed';
+            messageElement.style.top = '10px';
+            messageElement.style.left = '50%';
+            messageElement.style.transform = 'translateX(-50%)';
+            messageElement.style.padding = '10px 20px';
+            messageElement.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+            messageElement.style.borderRadius = '5px';
+            messageElement.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            messageElement.style.zIndex = '9999';
+            messageElement.style.fontSize = '14px';
+            messageElement.textContent = `Reconnecting to speech service... (${retryCountRef.current}/${MAX_RETRIES})`;
+            document.body.appendChild(messageElement);
+            
+            // Remove the element after 3 seconds
+            setTimeout(() => {
+              if (document.body.contains(messageElement)) {
+                document.body.removeChild(messageElement);
+              }
+            }, 3000);
+            
+            // Wait a moment before retrying
+            setTimeout(() => {
+              try {
+                recognition.abort(); // Force abort any pending processes
+              } catch (e) {
+                console.warn('Could not abort recognition:', e);
+              }
+              
+              // Try to restart
+              try {
+                recognition.start();
+              } catch (e) {
+                console.error('Failed to restart recognition:', e);
+                setIsRecognizing(false);
+                alert('Voice recognition failed. Please try again later.');
+              }
+            }, 1000);
+            
+            return;
+          } else {
+            // Too many retries, show error
+            setIsRecognizing(false);
+            alert('Network connection is unstable. Please check your internet connection and try again.');
+            retryCountRef.current = 0;
+          }
+        } else {
+          // Handle other errors
+          setIsRecognizing(false);
+          
+          // Provide helpful messages based on error type
+          switch(event.error) {
+            case 'no-speech':
+              alert('No speech was detected. Please try again and speak clearly.');
+              break;
+            case 'audio-capture':
+              alert('No microphone was found. Please check your microphone connection.');
+              break;
+            case 'not-allowed':
+              alert('Microphone access denied. Please allow microphone access in your browser settings.');
+              break;
+            default:
+              alert(`Voice recognition error: ${event.error}. Please try again.`);
+          }
         }
-        
-        alert(errorMessage);
       };
-
+      
+      // Start recognition
       recognition.start();
-    } else {
-      recognition.stop();
+      
+    } catch (e) {
+      console.error('Failed to initialize speech recognition:', e);
       setIsRecognizing(false);
+      alert('Failed to start voice recognition. Please try again.');
     }
+  };
+  
+  // Stop voice recognition safely
+  const stopVoiceRecognition = () => {
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        retryCountRef.current = 0; // Reset retry counter
+      }
+    } catch (e) {
+      console.error('Error stopping recognition:', e);
+    }
+    
+    setIsRecognizing(false);
   };
 
   // Handle Enter key for sending messages
