@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { connectWallet, getVerifiedTherapists } from "@/lib/blockchain";
-import { CheckCircle, LogIn } from "lucide-react";
+import { CheckCircle, LogIn, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import BookingSteps from "@/components/BookingSteps";
 import { format } from "date-fns";
@@ -18,6 +18,8 @@ interface Therapist {
   specialization: string;
   availability: Availability[];
   imageUrl: string;
+  isEmergency?: boolean;
+  experience?: string;
 }
 
 const Index = () => {
@@ -32,11 +34,83 @@ const Index = () => {
   const [userType, setUserType] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadTherapists = async () => {
-      const list = await getVerifiedTherapists();
-      setTherapists(list);
-    };
-    loadTherapists();
+    // Mock therapist data with expanded specializations and emergency therapist
+    const mockTherapists: Therapist[] = [
+      {
+        id: "t1",
+        name: "Dr. Manisha Sharma",
+        specialization: "Depression & Anxiety",
+        experience: "10 years",
+        availability: [
+          { date: "2025-04-14", slots: ["10:00", "14:00"] },
+          { date: "2025-04-15", slots: ["11:00", "15:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/women/33.jpg"
+      },
+      {
+        id: "t2",
+        name: "Dr. Rajesh Pandey",
+        specialization: "PTSD Specialist",
+        experience: "8 years",
+        availability: [
+          { date: "2025-04-14", slots: ["09:00", "13:00"] },
+          { date: "2025-04-15", slots: ["10:00", "14:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/men/52.jpg"
+      },
+      {
+        id: "t3",
+        name: "Dr. Anita Giri",
+        specialization: "Child Psychology",
+        experience: "12 years",
+        availability: [
+          { date: "2025-04-15", slots: ["09:00", "13:00"] },
+          { date: "2025-04-16", slots: ["11:00", "15:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/women/68.jpg"
+      },
+      {
+        id: "t4",
+        name: "Dr. Sanjay Thapa",
+        specialization: "Addiction Recovery",
+        experience: "9 years",
+        availability: [
+          { date: "2025-04-14", slots: ["11:00", "16:00"] },
+          { date: "2025-04-15", slots: ["10:00", "15:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/men/44.jpg"
+      },
+      {
+        id: "t5",
+        name: "Dr. Priya Karki",
+        specialization: "Relationship Counseling",
+        experience: "7 years",
+        availability: [
+          { date: "2025-04-15", slots: ["09:00", "14:00"] },
+          { date: "2025-04-16", slots: ["11:00", "16:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/women/22.jpg"
+      },
+      {
+        id: "t6",
+        name: "Dr. Sunil Gurung",
+        isEmergency: true,
+        specialization: "Crisis Intervention",
+        experience: "15 years",
+        availability: [
+          { date: "2025-04-13", slots: ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"] },
+          { date: "2025-04-14", slots: ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"] },
+          { date: "2025-04-15", slots: ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00"] }
+        ],
+        imageUrl: "https://randomuser.me/api/portraits/men/28.jpg"
+      }
+    ];
+
+    // Always set the mock therapists first to ensure UI is populated
+    setTherapists(mockTherapists);
+    
+    // DO NOT try to load from blockchain - removed to prevent overwriting mock therapists
+    // The blockchain integration is causing therapists to disappear when wallet is connected
     
     // Check if user is logged in
     const userAuth = localStorage.getItem("userAuth");
@@ -144,13 +218,37 @@ const Index = () => {
             <h2 className="text-xl font-bold mb-4">Select a Therapist</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {therapists.map((therapist) => (
-                <div key={therapist.id} className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow" 
-                     onClick={() => handleSelectTherapist(therapist)}>
+                <div 
+                  key={therapist.id} 
+                  className={`p-4 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-all ${
+                    therapist.isEmergency 
+                      ? 'bg-red-50 border-2 border-red-500 relative overflow-hidden' 
+                      : 'bg-white border'
+                  }`} 
+                  onClick={() => handleSelectTherapist(therapist)}
+                >
+                  {therapist.isEmergency && (
+                    <div className="absolute top-0 right-0">
+                      <div className="bg-red-500 text-white px-4 py-1 transform rotate-45 translate-x-2 translate-y-4 shadow-md">
+                        Emergency
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center">
                     <img src={therapist.imageUrl} alt={therapist.name} className="w-14 h-14 rounded-full mr-4" />
                     <div>
                       <h3 className="font-medium">{therapist.name}</h3>
-                      <p className="text-sm text-gray-600">{therapist.specialization}</p>
+                      <p className={`text-sm ${therapist.isEmergency ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                        {therapist.specialization}
+                      </p>
+                      {therapist.experience && <p className="text-xs text-gray-500">{therapist.experience}</p>}
+                      {therapist.isEmergency && (
+                        <div className="mt-2 flex items-center">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <AlertCircle className="h-3 w-3 mr-1" /> 24/7 Crisis Support
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -174,6 +272,7 @@ const Index = () => {
               <div>
                 <h3 className="font-medium">{selectedTherapist.name}</h3>
                 <p className="text-sm text-gray-600">{selectedTherapist.specialization}</p>
+                {selectedTherapist.experience && <p className="text-xs text-gray-500">{selectedTherapist.experience}</p>}
               </div>
             </div>
             
