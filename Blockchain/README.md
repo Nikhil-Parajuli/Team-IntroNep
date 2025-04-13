@@ -1,7 +1,7 @@
 # Mental Health Support Platform with Blockchain Appointment Booking
 
 <div align="center">
-  <img src="public/ai-assistant.png" alt="Mental Health Platform Logo" width="180" />
+  <img src="#" alt="Mental Health Platform Logo" width="180" />
   <h3>A secure, private mental health support platform with AI assistance and blockchain-powered appointment booking</h3>
 </div>
 
@@ -57,8 +57,8 @@ The platform architecture consists of:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/team-intronep/mental-health-blockchain.git
-   cd mental-health-blockchain
+   git clone https://github.com/Nikhil-Parajuli/Team-IntroNep.git
+   cd Blockchain
    ```
 
 2. **Install dependencies**
