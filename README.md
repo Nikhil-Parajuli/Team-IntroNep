@@ -20,7 +20,7 @@ Our solution combines AI chatbot support for immediate assistance with a secure 
 ## System Architecture
 
 <div align="center">
-  <img src="public/architecture.png" alt="System Architecture" width="700" />
+  <img src="/Blockchain/public/architecture.jpeg" alt="System Architecture" width="700" />
 </div>
 
 The platform architecture consists of:
