@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { connectWallet } from "@/lib/blockchain";
@@ -41,7 +40,7 @@ const Header = () => {
             <Calendar className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-therapeutic-600 to-calm-500 bg-clip-text text-transparent">
-            MindfulMeet
+            MindChain
           </h1>
         </div>
         

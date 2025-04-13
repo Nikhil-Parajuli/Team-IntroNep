@@ -56,8 +56,18 @@ const App = () => {
         <Sonner />
         <HashRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* Redirect root to login page */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            {/* Move the original homepage to /home */}
+            <Route 
+              path="/home" 
+              element={
+                <ProtectedRoute requiredType="user">
+                  <Index />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/user-dashboard" 
               element={

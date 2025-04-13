@@ -73,7 +73,7 @@ const Login = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">MindfulMeet Login</CardTitle>
+          <CardTitle className="text-center text-2xl">MindChain Login</CardTitle>
           <CardDescription className="text-center">
             Sign in to access your dashboard
           </CardDescription>

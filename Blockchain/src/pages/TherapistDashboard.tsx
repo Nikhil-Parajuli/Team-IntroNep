@@ -148,7 +148,7 @@ const TherapistDashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white p-4 border-b shadow-sm">
         <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold text-therapeutic-600">MindfulMeet</h1>
+          <h1 className="text-xl font-bold text-therapeutic-600">MindChain</h1>
           
           <div className="flex items-center gap-4">
             <div className="text-sm font-medium">

@@ -178,7 +178,7 @@ const UserDashboard = () => {
       </div>
       
       <div className="mt-8 text-center">
-        <Button onClick={() => navigate("/")} className="bg-therapeutic-500 hover:bg-therapeutic-600">
+        <Button onClick={() => navigate("/home")} className="bg-therapeutic-500 hover:bg-therapeutic-600">
           Book New Appointment
         </Button>
       </div>
@@ -211,7 +211,7 @@ const UserDashboard = () => {
         <Sidebar>
           <SidebarHeader>
             <div className="p-2">
-              <h2 className="text-lg font-bold text-therapeutic-600">MindfulMeet</h2>
+              <h2 className="text-lg font-bold text-therapeutic-600">MindChain</h2>
             </div>
           </SidebarHeader>
           <SidebarContent>

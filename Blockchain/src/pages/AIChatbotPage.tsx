@@ -109,7 +109,7 @@ export default function AIChatbotPage() {
         <Sidebar>
           <SidebarHeader>
             <div className="p-2">
-              <h2 className="text-lg font-bold text-therapeutic-600">MindfulMeet</h2>
+              <h2 className="text-lg font-bold text-therapeutic-600">MindChain</h2>
             </div>
           </SidebarHeader>
           <SidebarContent>
