@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 import { format } from "date-fns";
 import { 
@@ -34,23 +33,46 @@ export const createBooking = async (
       localStorage.setItem(`clientInfo_${anonymousId}`, JSON.stringify(clientInfo));
     }
     
-    // Call blockchain method to create booking
+    // Validate and format the therapistId to ensure it's a valid Ethereum address
+    let formattedTherapistId = therapistId;
+    
+    // Check if the therapistId is not a valid Ethereum address
+    if (!therapistId.startsWith('0x') || therapistId.length !== 42) {
+      // Use mock therapist addresses based on the ID for development
+      const mockTherapistAddresses: Record<string, string> = {
+        "t1": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "t2": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+        // Add more mappings as needed
+      };
+      
+      if (mockTherapistAddresses[therapistId]) {
+        formattedTherapistId = mockTherapistAddresses[therapistId];
+        console.log(`Using mapped address ${formattedTherapistId} for therapist ID ${therapistId}`);
+      } else {
+        // If no mapping exists, use a default address
+        formattedTherapistId = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"; // Default to first mock therapist
+        console.log(`No mapping found for therapist ID ${therapistId}, using default address`);
+      }
+    }
+    
+    // Call blockchain method to create booking with the formatted therapist ID
     const result = await createBookingContract(
-      therapistId,
+      formattedTherapistId,
       formattedDate,
       time,
       anonymousId,
-      sessionType
+      sessionType,
+      clientInfo
     );
     
     if (result.success) {
-      toast.success("Booking created successfully!");
       return {
         success: true,
-        contractAddress: result.contractAddress
+        contractAddress: result.contractAddress,
+        transactionHash: result.transactionHash,
+        networkId: result.networkId
       };
     } else {
-      toast.error("Failed to create booking: " + result.error);
       return {
         success: false,
         error: result.error
@@ -59,12 +81,7 @@ export const createBooking = async (
   } catch (error: any) {
     console.error("Error creating booking:", error);
     toast.error("Error creating booking: " + error.message);
-    
-    // For development fallback
-    return {
-      success: true, // For prototype, return success even if there's an error
-      contractAddress: "0x" + Math.random().toString(16).substring(2, 42)
-    };
+    return { success: false, error: error.message };
   }
 };
 
@@ -77,7 +94,9 @@ export const confirmBooking = async (contractAddress: string) => {
     if (result.success) {
       toast.success("Booking confirmed successfully!");
       return {
-        success: true
+        success: true,
+        transactionHash: result.transactionHash,
+        networkId: result.networkId
       };
     } else {
       toast.error("Failed to confirm booking: " + result.error);
@@ -89,11 +108,7 @@ export const confirmBooking = async (contractAddress: string) => {
   } catch (error: any) {
     console.error("Error confirming booking:", error);
     toast.error("Error confirming booking: " + error.message);
-    
-    // For development fallback
-    return {
-      success: true // For prototype, return success even if there's an error
-    };
+    return { success: false, error: error.message };
   }
 };
 

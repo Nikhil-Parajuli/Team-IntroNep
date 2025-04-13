@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, ExternalLink, Check, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ContractStepProps {
   contractAddress: string;
+  transactionHash?: string;
+  networkId?: number | null;
 }
 
-const ContractStep: React.FC<ContractStepProps> = ({ contractAddress }) => {
+const ContractStep: React.FC<ContractStepProps> = ({ contractAddress, transactionHash, networkId }) => {
   const [isVerifying, setIsVerifying] = useState(true);
   const [isDeployed, setIsDeployed] = useState(false);
   const [networkName, setNetworkName] = useState("");
@@ -19,24 +20,21 @@ const ContractStep: React.FC<ContractStepProps> = ({ contractAddress }) => {
       try {
         // Check if we're on a network with Etherscan support
         if (window.ethereum) {
-          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-          let explorerUrl = "";
+          const chainId = networkId ? `0x${networkId.toString(16)}` : await window.ethereum.request({ method: 'eth_chainId' });
           
           switch (chainId) {
             case "0x1": // Mainnet
               setNetworkName("Ethereum Mainnet");
-              explorerUrl = "https://etherscan.io";
               break;
             case "0x5": // Goerli
               setNetworkName("Goerli Testnet");
-              explorerUrl = "https://goerli.etherscan.io";
               break;
             case "0xaa36a7": // Sepolia
+            case "11155111": // Decimal representation of Sepolia
               setNetworkName("Sepolia Testnet");
-              explorerUrl = "https://sepolia.etherscan.io";
               break;
             default:
-              setNetworkName("Local Development Network");
+              setNetworkName(networkId ? `Network ID: ${networkId}` : "Local Development Network");
               break;
           }
         }
@@ -54,12 +52,20 @@ const ContractStep: React.FC<ContractStepProps> = ({ contractAddress }) => {
     if (contractAddress) {
       verifyContract();
     }
-  }, [contractAddress]);
+  }, [contractAddress, networkId]);
 
   const getExplorerUrl = () => {
     if (networkName === "Ethereum Mainnet") return `https://etherscan.io/address/${contractAddress}`;
     if (networkName === "Goerli Testnet") return `https://goerli.etherscan.io/address/${contractAddress}`;
     if (networkName === "Sepolia Testnet") return `https://sepolia.etherscan.io/address/${contractAddress}`;
+    return "#"; // Local network or unknown
+  };
+  
+  const getTransactionExplorerUrl = () => {
+    if (!transactionHash) return null;
+    if (networkName === "Ethereum Mainnet") return `https://etherscan.io/tx/${transactionHash}`;
+    if (networkName === "Goerli Testnet") return `https://goerli.etherscan.io/tx/${transactionHash}`;
+    if (networkName === "Sepolia Testnet") return `https://sepolia.etherscan.io/tx/${transactionHash}`;
     return "#"; // Local network or unknown
   };
 
@@ -87,11 +93,18 @@ const ContractStep: React.FC<ContractStepProps> = ({ contractAddress }) => {
                 Network: {networkName}
               </p>
               {networkName !== "Local Development Network" && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-1">
                   <a href={getExplorerUrl()} target="_blank" rel="noopener noreferrer" 
                      className="text-xs flex items-center text-therapeutic-600 hover:text-therapeutic-800">
-                    <ExternalLink className="h-3 w-3 mr-1" /> View on Etherscan
+                    <ExternalLink className="h-3 w-3 mr-1" /> View Contract on Etherscan
                   </a>
+                  
+                  {transactionHash && (
+                    <a href={getTransactionExplorerUrl()} target="_blank" rel="noopener noreferrer" 
+                       className="text-xs flex items-center text-therapeutic-600 hover:text-therapeutic-800">
+                      <ExternalLink className="h-3 w-3 mr-1" /> View Transaction on Etherscan
+                    </a>
+                  )}
                 </div>
               )}
               <p className="text-xs text-therapeutic-700 mt-3">

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,10 +59,50 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [contractAddress, setContractAddress] = useState("");
+  const [transactionHash, setTransactionHash] = useState("");
+  const [networkId, setNetworkId] = useState<number | null>(null);
+  // Add a short processing timeout for a better UX
+  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeout) {
+        clearTimeout(processingTimeout);
+      }
+    };
+  }, [processingTimeout]);
 
   const generateId = () => {
     const newId = generateBookingId();
     setAnonymousId(newId);
+  };
+
+  // Add a function to handle transition to next step with a minimum
+  // "processing" indication for better UX
+  const transitionToNextStep = (result: any) => {
+    // Set the transaction data immediately
+    if (result.contractAddress) {
+      setContractAddress(result.contractAddress);
+    }
+    if (result.transactionHash) {
+      setTransactionHash(result.transactionHash);
+    }
+    if (result.networkId) {
+      setNetworkId(result.networkId);
+    }
+
+    // Ensure "Processing..." is shown for at least 300ms for better UX
+    // This prevents the UI from flickering if MetaMask responds very quickly
+    const minProcessingTime = 300; // milliseconds
+    
+    const timeout = setTimeout(() => {
+      setIsLoading(false);
+      setCurrentStep(prevStep => prevStep + 1);
+      setProcessingTimeout(null);
+    }, minProcessingTime);
+    
+    setProcessingTimeout(timeout);
   };
 
   const handleNextStep = async () => {
@@ -101,20 +141,28 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
       }
       
       setIsLoading(true);
-      const result = await createBooking(
-        therapistId,
-        selectedDate,
-        selectedTime,
-        anonymousId,
-        sessionType,
-        clientInfo
-      );
       
-      setIsLoading(false);
-      
-      if (result.success) {
-        setContractAddress(result.contractAddress);
-        setCurrentStep(currentStep + 1);
+      try {
+        const result = await createBooking(
+          therapistId,
+          selectedDate,
+          selectedTime,
+          anonymousId,
+          sessionType,
+          clientInfo
+        );
+        
+        if (result.success) {
+          // Use the transition function instead of directly setting state
+          transitionToNextStep(result);
+        } else {
+          setIsLoading(false);
+          toast.error(result.error || "Failed to create booking");
+        }
+      } catch (error) {
+        setIsLoading(false);
+        toast.error("An unexpected error occurred");
+        console.error("Error in booking creation:", error);
       }
     } else if (currentStep === 5) {
       // Confirm booking terms
@@ -124,13 +172,24 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
       }
       
       setIsLoading(true);
-      const result = await confirmBooking(contractAddress);
-      setIsLoading(false);
       
-      if (result.success) {
-        setCurrentStep(currentStep + 1);
+      try {
+        const result = await confirmBooking(contractAddress);
+        
+        if (result.success) {
+          // Use the transition function to handle state updates
+          transitionToNextStep(result);
+        } else {
+          setIsLoading(false);
+          toast.error(result.error || "Failed to confirm booking");
+        }
+      } catch (error) {
+        setIsLoading(false);
+        toast.error("An unexpected error occurred");
+        console.error("Error in booking confirmation:", error);
       }
     } else {
+      // Regular step transitions
       setCurrentStep(currentStep + 1);
     }
   };
@@ -138,6 +197,20 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
   const handlePreviousStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Further optimize the button rendering to make the UI more responsive
+  const renderButtonText = () => {
+    if (!isLoading) return "Next Step";
+    
+    // Show appropriate text based on current step
+    if (currentStep === 4) {
+      return "Creating Contract...";
+    } else if (currentStep === 5) {
+      return "Confirming...";
+    } else {
+      return "Processing...";
     }
   };
 
@@ -181,7 +254,11 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
         
       case 5:
         return (
-          <ContractStep contractAddress={contractAddress} />
+          <ContractStep 
+            contractAddress={contractAddress}
+            transactionHash={transactionHash}
+            networkId={networkId}
+          />
         );
         
       case 6:
@@ -191,6 +268,8 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             anonymousId={anonymousId}
+            transactionHash={transactionHash}
+            networkId={networkId}
           />
         );
         
@@ -221,11 +300,19 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
       
       <CardFooter className="flex justify-between">
         {currentStep > 1 && currentStep < 6 ? (
-          <Button variant="outline" onClick={handlePreviousStep}>
+          <Button 
+            variant="outline" 
+            onClick={handlePreviousStep}
+            disabled={isLoading}
+          >
             Back
           </Button>
         ) : (
-          <Button variant="outline" onClick={onCancel}>
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
         )}
@@ -236,7 +323,7 @@ const BookingSteps: React.FC<BookingStepsProps> = ({
             disabled={isLoading}
             className="bg-therapeutic-500 hover:bg-therapeutic-600"
           >
-            {isLoading ? "Processing..." : "Next Step"}
+            {renderButtonText()}
           </Button>
         ) : (
           <Button 

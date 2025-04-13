@@ -1,26 +1,41 @@
-
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Calendar, Clock, Shield, Check, Calendar as CalendarIcon } from "lucide-react";
+import { User, Calendar, Clock, Shield, Check, Calendar as CalendarIcon, ExternalLink } from "lucide-react";
 
 interface SuccessStepProps {
   therapistName: string;
   selectedDate: Date | undefined;
   selectedTime: string;
   anonymousId: string;
+  transactionHash?: string;
+  networkId?: number | null;
 }
 
 const SuccessStep: React.FC<SuccessStepProps> = ({
   therapistName,
   selectedDate,
   selectedTime,
-  anonymousId
+  anonymousId,
+  transactionHash,
+  networkId
 }) => {
   const [calendarOption, setCalendarOption] = useState("google");
+
+  const getTransactionExplorerUrl = () => {
+    if (!transactionHash) return null;
+    
+    // Determine the network and return the appropriate Etherscan URL
+    if (networkId === 1) return `https://etherscan.io/tx/${transactionHash}`;
+    if (networkId === 5) return `https://goerli.etherscan.io/tx/${transactionHash}`;
+    if (networkId === 11155111) return `https://sepolia.etherscan.io/tx/${transactionHash}`;
+    
+    // Default to Sepolia if unknown network but we have a hash
+    return `https://sepolia.etherscan.io/tx/${transactionHash}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -68,6 +83,26 @@ const SuccessStep: React.FC<SuccessStepProps> = ({
             <p className="text-sm font-mono text-gray-600">{anonymousId}</p>
           </div>
         </div>
+        
+        {transactionHash && (
+          <div className="border-t border-gray-200 pt-3 mt-3">
+            <p className="text-xs text-gray-500 mb-2">Blockchain Transaction</p>
+            <div>
+              <p className="text-xs text-gray-600 font-mono truncate">
+                {transactionHash}
+              </p>
+              <a 
+                href={getTransactionExplorerUrl()} 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs flex items-center text-therapeutic-600 hover:text-therapeutic-800 mt-1"
+              >
+                <ExternalLink className="h-3 w-3 mr-1" />
+                View Transaction on Etherscan
+              </a>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="mt-4">
