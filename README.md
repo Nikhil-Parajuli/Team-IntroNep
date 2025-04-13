@@ -57,8 +57,8 @@ The platform architecture consists of:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/team-intronep/mental-health-blockchain.git
-   cd mental-health-blockchain
+   git clone https://github.com/Nikhil-Parajuli/Team-IntroNep.git
+   cd Blockchain
    ```
 
 2. **Install dependencies**
